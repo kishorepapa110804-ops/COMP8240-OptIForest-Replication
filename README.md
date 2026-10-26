@@ -29,10 +29,10 @@ python scripts/construct_synthetic_dataset.py
 
 cd original_repository/OptIForest-main
 python demo.py --dataset=ad --threshold=403 --branch=0
+cd ../..
+
 
 ## Run the preliminary new-data experiments
-
-Return to the main project folder and run:
 
 python scripts/run_mammography_preliminary.py
 python scripts/run_synthetic_preliminary.py
