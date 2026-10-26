@@ -1,0 +1,11 @@
+Constructed Synthetic Anomaly Dataset
+=====================================
+Random seed: 2026
+Observations: 2100
+Numerical features: 6
+Normal observations: 2000
+Anomalies: 100
+Anomaly percentage: 4.76%
+Normal-data structure: Two Gaussian clusters
+Anomaly construction: Uniform observations outside both clusters
+Label definition: 0 = normal, 1 = anomaly

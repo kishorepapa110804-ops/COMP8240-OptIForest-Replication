@@ -1,0 +1,22 @@
+Synthetic Anomaly Preliminary OptIForest Result
+=========================================
+Experiment type: Reduced feasibility experiment
+Repetitions: 1
+Number of trees: 10
+Threshold: 403
+Branch setting: 0
+Observations: 2100
+Features: 6
+Normal observations: 2000
+Anomalies: 100
+AUC-ROC: 1.000000
+Average precision: 1.000000
+Training time: 0.60 seconds
+Testing time: 2.24 seconds
+
+Important limitation:
+This is a controlled synthetic dataset with deliberately separated
+anomalies. The high scores demonstrate that the pipeline works on
+known anomaly structure, but they do not represent performance on
+complex real-world data. The reduced experiment uses 10 trees and
+one repetition for preliminary feasibility testing.

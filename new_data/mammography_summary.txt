@@ -1,0 +1,10 @@
+Mammography Dataset Preparation Summary
+========================================
+Source: OpenML dataset 40907
+Observations: 11183
+Features: 6
+Normal observations: 10923
+Anomalies: 260
+Anomaly percentage: 2.32%
+Missing values: 0
+Label format: 0 = normal, 1 = anomaly

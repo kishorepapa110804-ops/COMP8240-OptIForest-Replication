@@ -1,0 +1,22 @@
+Mammography Preliminary OptIForest Result
+=========================================
+Experiment type: Reduced feasibility experiment
+Repetitions: 1
+Number of trees: 10
+Threshold: 403
+Branch setting: 0
+Observations: 11183
+Features: 6
+Normal observations: 10923
+Anomalies: 260
+AUC-ROC: 0.798007
+Average precision: 0.064793
+Training time: 543.56 seconds
+Testing time: 13.61 seconds
+
+Important limitation:
+The original configuration of 100 trees and 15 repetitions was
+stopped after exceeding one hour. This reduced experiment uses
+10 trees and one repetition to provide preliminary evidence of
+compatibility and feasibility. It is not directly comparable with
+the complete published experimental configuration.

@@ -1,0 +1,616 @@
+\documentclass[11pt]{article}
+
+\usepackage{acl}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{url}
+
+\title{Reproducing and Extending OptIForest for Anomaly Detection}
+
+\author{
+  Kishore P \\
+  Macquarie University \\
+  COMP8240 Applications of Data Science \\
+  \texttt{kishore.pandidurai@students.mq.edu.au}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This proposal outlines a reproducibility study of OptIForest, an
+unsupervised anomaly detection method based on the isolation forest
+mechanism. The proposed project will first reproduce selected results
+reported by Xiang et al. using the authors' public Python implementation
+and original benchmark data. It will then evaluate OptIForest using
+additional existing datasets and newly constructed synthetic anomaly
+data. The evaluation will consider detection effectiveness using
+AUC-ROC and AUC-PR, computational efficiency, and sensitivity to
+branching factor, cut threshold, and sampling size. A preliminary
+execution on the supplied AD dataset produced results close to those
+reported in the original paper, supporting the feasibility of the
+project.
+\end{abstract}
+
+\section{Introduction}
+Anomaly detection is the task of identifying observations or patterns
+that differ substantially from the behaviour expected in a dataset
+\citep{chandola2009anomaly}. Such observations may represent events of
+practical importance, including fraudulent financial transactions,
+cybersecurity intrusions, equipment faults, or unusual health
+measurements. In many real applications, anomalies are rare and
+reliable labels are expensive to obtain. Unsupervised anomaly detection
+is therefore valuable because it attempts to identify unusual
+observations without requiring labelled examples during model training.
+
+Isolation Forest is an ensemble method that detects anomalies by
+repeatedly partitioning sampled observations using isolation trees
+\citep{liu2008isolation}. The method is based on the idea that unusual
+observations tend to be separated from the majority using fewer
+partitions and consequently have shorter tree paths. Although many
+isolation-forest methods use binary trees, Xiang et al. argue that a
+binary branching factor is not theoretically optimal
+\citep{xiang2023optiforest}. Their proposed OptIForest method introduces
+a theoretical measure of isolation efficiency and derives an optimal
+average branching factor close to Euler's number, \(e \approx 2.718\).
+The practical method also incorporates clustering-based learning to
+hash with the aim of improving isolation quality while maintaining
+computational efficiency.
+
+This project will investigate the reproducibility and generalisability
+of OptIForest. First, selected results will be reproduced using the
+authors' public implementation and original benchmark data. The method
+will then be evaluated on existing datasets not investigated in the
+paper and on newly constructed synthetic anomaly data. The study will
+compare detection performance using AUC-ROC and AUC-PR, examine
+execution time, and investigate sensitivity to branching factor, cut
+threshold, and sampling size. The objective is to determine whether the
+published results can be reproduced and whether the paper's claims
+continue to hold under new data conditions.
+
+\section{Description of the Selected Paper}
+
+\subsection{Anomaly Detection}
+Anomaly detection is the task of identifying observations that differ
+substantially from the behaviour expected in a dataset
+\citep{chandola2009anomaly}. A normal observation follows a common
+pattern found among many observations, whereas an anomaly is rare,
+unusual or inconsistent with that pattern. Examples include fraudulent
+financial transactions, network intrusions, equipment faults and unusual
+medical measurements.
+
+Anomaly detection may be supervised when reliable labelled examples are
+available. However, anomaly labels are often rare or expensive to obtain.
+Unsupervised anomaly-detection methods therefore attempt to assign
+anomaly scores without using class labels during model training. A higher
+score normally indicates that an observation is considered more unusual.
+Ground-truth labels may still be used after training to evaluate how well
+the scores rank genuine anomalies above normal observations.
+
+\subsection{Isolation Forest}
+Isolation Forest detects anomalies by isolating observations rather
+than constructing a detailed model of normal behaviour
+\citep{liu2008isolation}. Each isolation tree is built from a random
+sample of the data. At every internal node, the original method randomly
+selects a feature and a split value, dividing the observations into
+smaller groups. This process continues recursively until observations
+are isolated or a stopping condition is reached.
+
+The path length of an observation is the number of divisions required
+to reach its terminal node. Anomalies are expected to have shorter path
+lengths because their feature values are relatively unusual and they
+can often be separated from the main data distribution quickly. Normal
+observations are located in denser regions and generally require more
+partitions before they are isolated. An ensemble of trees is used to
+reduce dependence on any single random tree, and the combined path
+lengths are converted into anomaly scores.
+
+For example, consider a dataset in which most financial transactions
+range from \$10 to \$300 while one transaction is \$15,000. A randomly
+selected split on transaction value is likely to separate the \$15,000
+observation after only a small number of divisions. Transactions in the
+common range may require many additional divisions. The unusually
+short path provides evidence that the \$15,000 transaction should
+receive a high anomaly ranking. However, whether it is genuinely
+fraudulent must ultimately be determined using contextual evidence or
+ground-truth labels.
+
+
+\subsection{The OptIForest Method}
+OptIForest investigates how the branching structure of an isolation
+tree affects its ability to separate observations
+\citep{xiang2023optiforest}. Let \(v\) represent the branching factor,
+\(d\) the tree depth, and \(\psi\) the number of leaf nodes in an
+idealised perfect tree. The relationship between these quantities is
+
+\[
+\psi = v^d.
+\]
+
+The paper defines the isolation area as \(\phi = vd\), representing the
+combined effect of tree width and depth. Isolation efficiency is then
+defined as
+
+\[
+\eta = \frac{\psi}{\phi}.
+\]
+
+Under a fixed isolation area, the authors formulate an optimisation
+problem that maximises isolation efficiency. Their theoretical solution
+gives an optimal branching factor of Euler's number,
+\(v=e\approx2.718\), rather than the binary factor \(v=2\) commonly used
+by isolation forests. A practical tree cannot create a fractional
+number of branches. OptIForest therefore uses a distribution of integer
+branching factors, principally binary and ternary branches, whose
+expected value approaches \(e\).
+
+OptIForest is built on the multi-branch LSHiForest framework. The method
+combines locality-sensitive hashing with clustering-based learning to
+hash. Similar observations can be assigned to the same branch, while
+the clustering component learns information from the data to improve
+partition quality. A cut threshold controls how much of each tree is
+constructed using clustering-based learning before the remaining
+partitioning is completed using the underlying hashing procedure. The
+authors argue that this controlled amount of learning reduces bias
+without introducing excessive variance or computational cost.
+
+\subsection{Main Contributions and Claims}
+The paper makes three principal contributions
+\citep{xiang2023optiforest}. First, it introduces the concept of
+isolation efficiency and provides a theoretical analysis suggesting
+that the optimal average branching factor is \(e\). This offers an
+explanation for why multi-branch isolation structures may outperform
+strictly binary trees.
+
+Second, the authors develop OptIForest as a practical unsupervised
+anomaly detector. The implementation combines the proposed branching
+structure with clustering-based learning to hash and is designed to
+balance detection quality with computational efficiency.
+
+Third, the paper evaluates OptIForest through comparative and ablation
+experiments. It compares OptIForest with six shallow and deep anomaly
+detectors across 20 benchmark datasets. The paper reports the highest
+average AUC-ROC and AUC-PR among the compared methods, although
+OptIForest is not the best method on every individual dataset. The
+ablation studies further report that branching factors close to \(e\)
+generally perform well and that the effects of cut threshold and
+sampling size vary across datasets. These claims provide specific
+results that can be investigated through reproduction and evaluation
+on new data.
+
+\section{Evaluation Methodology}
+
+\subsection{Baseline Methods}
+OptIForest is compared with six unsupervised anomaly detection
+baselines \citep{xiang2023optiforest}. These methods represent
+traditional isolation-based approaches, statistical methods, and
+deep representation-learning approaches.
+
+\textbf{iForest} is the original Isolation Forest method. It constructs
+binary isolation trees using random features and split values
+\citep{liu2008isolation}. It provides an important baseline for
+determining whether OptIForest's alternative branching structure and
+data-dependent learning improve performance.
+
+\textbf{LSHiForest} extends the isolation-forest mechanism using
+locality-sensitive hashing and permits multi-branch isolation trees
+\citep{zhang2017lshiforest}. It is especially relevant because
+OptIForest uses LSHiForest as its underlying framework.
+
+\textbf{ECOD} is a statistical detector that estimates outlier scores
+using empirical cumulative distribution functions
+\citep{li2022ecod}. It does not require iterative model training and is
+deterministic, which explains the zero standard deviations reported for
+ECOD in the OptIForest results.
+
+\textbf{REPEN} learns lower-dimensional representations that support
+random distance-based outlier detection
+\citep{pang2018repen}. It represents a deep learning approach intended
+to improve detection in high-dimensional data.
+
+\textbf{RDP} learns representations by predicting randomly generated
+distances without requiring anomaly labels \citep{wang2021rdp}. It is
+included as another deep representation-learning baseline.
+
+\textbf{DiForest}, or Deep Isolation Forest, combines random neural
+representations with the isolation-forest mechanism
+\citep{xu2022diforest}. Comparing OptIForest with REPEN, RDP and
+DiForest allows the paper to investigate whether its shallower method
+can provide competitive detection performance with lower computational
+cost.
+
+\subsection{AUC-ROC}
+The receiver operating characteristic curve evaluates how well anomaly
+scores separate anomalous and normal observations across all possible
+decision thresholds \citep{fawcett2006roc}. At each threshold, the
+true-positive rate and false-positive rate are calculated as
+
+\[
+\mathrm{TPR}=\frac{\mathrm{TP}}{\mathrm{TP}+\mathrm{FN}},
+\qquad
+\mathrm{FPR}=\frac{\mathrm{FP}}{\mathrm{FP}+\mathrm{TN}},
+\]
+
+where TP and TN represent correctly identified anomalous and normal
+observations, while FP and FN represent the corresponding errors. The
+ROC curve plots TPR against FPR.
+
+AUC-ROC is the area under this curve. A value of 1 represents perfect
+ranking, while a value near 0.5 indicates performance similar to random
+ranking. Higher values are therefore preferable. A useful
+interpretation is the probability that a randomly selected anomaly
+receives a higher anomaly score than a randomly selected normal
+observation. The OptIForest paper reports the mean and standard
+deviation of AUC-ROC across 15 runs.
+
+\subsection{AUC-PR}
+
+
+The precision--recall curve evaluates anomaly detection performance by
+comparing precision and recall across different decision thresholds
+\citep{saito2015precision}. Precision measures the proportion of
+observations predicted as anomalies that are genuine anomalies, while
+recall measures the proportion of all genuine anomalies that are
+successfully detected:
+
+\[
+\mathrm{Precision} =
+\frac{\mathrm{TP}}{\mathrm{TP}+\mathrm{FP}},
+\qquad
+\mathrm{Recall} =
+\frac{\mathrm{TP}}{\mathrm{TP}+\mathrm{FN}}.
+\]
+
+AUC-PR summarises the precision--recall relationship across the possible
+thresholds. Higher values indicate better anomaly detection performance.
+It is particularly useful when anomalies are much less common than normal
+observations because it focuses on performance for the rare positive
+class. The supplied OptIForest implementation calculates the PR score
+using Scikit-learn's average precision function. The paper reports the
+mean and standard deviation of this score over 15 experimental runs.
+
+\subsection{Worked Evaluation Example}
+
+Consider five observations ranked from the highest to the lowest anomaly
+score. Their ground-truth labels in ranking order are
+\([1,0,1,0,0]\), where 1 represents an anomaly and 0 represents a normal
+observation. The corresponding anomaly scores are
+\([0.95,0.80,0.70,0.40,0.10]\).
+
+There are two anomalies and three normal observations, producing six
+possible anomaly--normal pairs. The first anomaly is ranked above all
+three normal observations. The second anomaly is ranked above two normal
+observations but below one. Therefore, five of the six pairs are ordered
+correctly:
+
+\[
+\mathrm{AUC\mbox{-}ROC} = \frac{5}{6} \approx 0.833.
+\]
+
+The implementation reports average precision as its PR score. The
+anomalies occur at ranks 1 and 3. Precision at these ranks is \(1/1\)
+and \(2/3\), respectively. Therefore,
+
+\[
+\mathrm{Average\ Precision}
+= \frac{1}{2}\left(1+\frac{2}{3}\right)
+\approx 0.833.
+\]
+
+The example shows that both measures reward placing anomalies above
+normal observations, while average precision concentrates on the quality
+of the rankings at positions containing anomalies.
+
+\subsection{Repeated Experiments and Execution Time}
+The original study repeats each experiment 15 times and reports the mean
+and standard deviation of its evaluation scores
+\citep{xiang2023optiforest}. Repetition is important because random
+sampling and randomised tree construction can produce different results.
+The mean represents typical performance, while a smaller standard
+deviation indicates more stable performance. Training and testing times
+are also recorded to evaluate computational efficiency.
+
+As a feasibility test, the public implementation was executed on the
+supplied AD dataset using a cut threshold of 403 and automatic
+branching-factor selection. It produced an AUC-ROC of
+\(0.7742\pm0.0033\) and an average-precision score of
+\(0.4460\pm0.0259\). Training and testing took approximately \(19.97\)
+and \(38.67\) seconds, respectively. These results are close to the
+published AD results. The experiment used Python 3.11.4 and NumPy
+1.26.4; NumPy was restricted below version 2.0 because the implementation
+uses the removed \texttt{np.mat} function. This successful run provides
+initial evidence that the project is technically feasible.
+
+\subsection{Initial LLM-as-Judge Evaluation}
+
+As an exploratory evaluation, an LLM may be asked to judge whether
+selected observations appear normal or anomalous from standardised,
+human-readable descriptions of their feature values. A small sample will
+include correctly detected anomalies, missed anomalies, false alarms and
+normal observations. The true labels and OptIForest predictions will be
+hidden from the LLM, and its classifications and explanations will be
+compared with the ground truth and model output.
+
+This evaluation will supplement rather than replace AUC-ROC, AUC-PR and
+error analysis. LLM judgements may be affected by prompt wording,
+domain knowledge and model version, so the final protocol will be refined
+after the relevant unit material is covered. Prompts, model settings and
+responses will be documented, and no private or personally identifiable
+information will be provided to an external model.
+
+\section{Original Datasets}
+
+The paper evaluates OptIForest on 20 processed benchmark datasets
+\citep{xiang2023optiforest}. Table~\ref{tab:original-data} groups them by
+their general data domain. The datasets vary in sample size, feature
+dimension and anomaly prevalence, allowing the method to be tested under
+substantially different conditions.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{p{0.22\textwidth}p{0.68\textwidth}}
+\toprule
+General domain & Datasets \\
+\midrule
+Behavioural and content data &
+AD, Campaign, Census, Donors and Spam \\
+Health-related data &
+Arrhythmia and Cardio \\
+Network and cybersecurity data &
+Backdoor, KDDCup99, HTTP and SMTP \\
+Image-derived data &
+CelebA and MNIST \\
+Scientific and classification benchmarks &
+Cover, Ionosphere, Satellite, Shuttle, Vowel, Waveform and Wine \\
+\bottomrule
+\end{tabular}
+\caption{The 20 original benchmark datasets used in the OptIForest
+evaluation.}
+\label{tab:original-data}
+\end{table*}
+
+Several of these resources were originally created for classification
+rather than anomaly detection. Their processed anomaly-detection versions
+treat selected classes or rare observations as anomalies and the
+remaining observations as normal. Consequently, reproducing the results
+requires the exact processed version, feature representation and label
+conversion used by the authors, rather than merely a dataset with the
+same name.
+
+The repository directly supplies only the processed AD dataset. The
+remaining datasets must be located through the public sources identified
+by the authors, including the UCI Machine Learning
+Repository,\footnote{\url{https://archive.ics.uci.edu/}}
+Kaggle,\footnote{\url{https://www.kaggle.com/datasets}}
+and public anomaly-detection benchmark repositories. For every dataset
+used in the final project, its original release or documentation will be
+cited and its download location, licence, dimensions, anomaly count and
+preprocessing steps will be recorded. If an exact published version
+cannot be identified, that dataset will not be presented as an exact
+reproduction; it may instead be reported as an extension using a
+documented alternative version.
+
+\section{Proposed New Data}
+
+\subsection{Candidate Existing Datasets}
+The extension will consider five labelled anomaly-detection datasets that
+were not included in the original OptIForest experiments. Labelled data
+are preferred because they allow AUC-ROC and AUC-PR to be calculated
+consistently with the original evaluation.
+
+\textbf{Credit Card Fraud Detection} contains European credit-card
+transactions represented by numerical features. Fraudulent transactions
+form a very small minority of the observations, making this dataset
+suitable for examining performance under severe class imbalance. It is
+publicly available through Kaggle.\footnote{\url{https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud}}
+
+\textbf{Mammography} contains six numerical features derived from
+mammogram observations. The minority class represents unusual
+observations and can be treated as the anomaly class. Its relatively low
+anomaly rate makes it useful for comparing AUC-ROC with AUC-PR.
+
+\textbf{Thyroid} contains numerical medical measurements and labelled
+abnormal thyroid cases. It offers a small-to-medium-sized experiment that
+should be computationally manageable while still presenting a strongly
+imbalanced detection problem.
+
+\textbf{Musk} contains high-dimensional numerical measurements of
+molecular conformations. Its large number of features provides an
+opportunity to test whether OptIForest remains effective when the feature
+dimension is much higher than in the supplied AD dataset.
+
+\textbf{Glass} contains chemical measurements of glass samples. One rare
+class is commonly treated as the anomaly class. Although the dataset is
+small, it is useful for investigating whether the algorithm's results
+become unstable when only a limited number of anomalous observations are
+available.
+
+The Mammography, Thyroid, Musk and Glass anomaly-detection versions are
+available from established public anomaly-detection benchmark
+collections such as ODDS and the Outlier Detection DataSets
+repository.\footnote{\url{http://odds.cs.stonybrook.edu/}}
+These five datasets were selected to provide variation in sample size,
+feature dimension, domain and anomaly rate. Their final inclusion will
+depend on confirming their availability, licence conditions, label
+definitions and compatibility with the OptIForest input format.
+
+\subsection{Feasibility Assessment}
+Table~\ref{tab:candidate-data} provides an initial feasibility comparison.
+The dataset statistics will be verified after downloading the final
+versions because different public repositories may contain differently
+processed copies.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{lrrrrl}
+\toprule
+Dataset & Observations & Features & Anomalies & Approx. rate & Initial assessment \\
+\midrule
+Credit Card Fraud & 284,807 & 30 & 492 & 0.17\% & Feasible but relatively large \\
+Mammography & 11,183 & 6 & 260 & 2.32\% & Highly feasible \\
+Thyroid & 3,772 & 6 & 93 & 2.47\% & Highly feasible \\
+Musk & 3,062 & 166 & 97 & 3.17\% & Feasible; high dimensionality \\
+Glass & 214 & 9 & 9 & 4.21\% & Feasible but statistically unstable \\
+\bottomrule
+\end{tabular}
+\caption{Preliminary feasibility assessment of candidate existing
+datasets. Counts are subject to verification against the downloaded
+versions.}
+\label{tab:candidate-data}
+\end{table*}
+
+Mammography and Thyroid are the strongest initial candidates because
+they are small enough to support repeated experiments and contain clear
+binary anomaly labels. They should require only limited preprocessing,
+such as checking missing values, separating labels from features and
+standardising the file format expected by the OptIForest implementation.
+
+Musk is also computationally manageable, but its 166 features may
+increase training time and memory usage. This makes it useful for testing
+high-dimensional performance. Credit Card Fraud is considerably larger
+and may require longer execution time. If running the complete dataset is
+impractical, a reproducible sampling procedure will be investigated while
+preserving all anomalies and documenting the changed anomaly rate.
+
+Glass requires minimal computing resources but contains very few
+anomalies. Its evaluation scores may therefore change considerably when
+only one observation is ranked differently. It will be treated as a
+supplementary stress test rather than the primary extension dataset.
+
+Before final selection, each dataset will be checked for download
+availability, usage conditions, feature definitions, missing values,
+duplicate observations and label conventions. No personally identifying
+information will be retained. All preprocessing will be implemented in
+Python scripts and documented in the project repository. Based on this
+initial assessment, Mammography and Thyroid will be prioritised, followed
+by Musk, subject to successful compatibility testing.
+
+\subsection{Newly Constructed Dataset}
+In addition to the existing datasets, a controlled synthetic dataset will
+be constructed to test OptIForest under conditions where the source and
+type of each anomaly are known. A Python script will generate the data so
+that the complete process can be reproduced using a recorded random seed.
+
+The initial dataset will contain approximately 5,000 normal observations
+and 100 anomalous observations. Normal observations will be sampled from
+multiple Gaussian clusters with different centres, variances and numbers
+of observations. This structure is intended to represent a population
+containing several legitimate groups rather than one uniform normal
+distribution.
+
+Two types of anomalies will be introduced. \textbf{Global anomalies} will
+be generated far outside the normal clusters and should therefore be
+relatively easy to isolate. \textbf{Local anomalies} will be positioned
+near a normal cluster but in regions of low local density. These cases
+should be more difficult because their values may appear reasonable when
+the overall dataset is considered, but unusual relative to their nearest
+cluster.
+
+Every generated row will include a unique identifier, numerical features,
+a binary ground-truth label and an anomaly-type label. The anomaly-type
+label will be used only for detailed analysis and will not be supplied to
+the unsupervised model. The data-generation script will save both the
+dataset and a metadata file recording the random seed and generation
+parameters.
+
+Several controlled versions will be created by varying dimensionality,
+cluster overlap and anomaly rate. For example, experiments may compare
+two-dimensional and ten-dimensional data, low and high cluster overlap,
+and anomaly rates of approximately \(0.5\%\), \(1\%\) and \(2\%\). These
+variations will help determine whether the reported advantage of
+OptIForest continues under different data conditions.
+
+The synthetic experiments will compare OptIForest with the standard
+Isolation Forest baseline using AUC-ROC, AUC-PR and execution time.
+Performance will also be reported separately for global and local
+anomalies. A two-dimensional version will be visualised to show the
+normal clusters, generated anomalies and model rankings. All scripts,
+parameter settings and generated data used in the final analysis will be
+included in the project repository.
+
+\section{Replication and Extension Plan}
+
+\subsection{Preliminary Reproduction}
+
+A preliminary reproduction was completed using the supplied AD dataset,
+a cut threshold of 403 and automatic branching-factor selection. The
+implementation produced mean AUC-ROC and average-precision scores of
+\(0.7742\) and \(0.4460\), respectively, which are close to the published
+AD results. NumPy was restricted to version 1.26.4 because the code uses
+\texttt{np.mat}, which was removed in NumPy 2.0. This successful execution
+confirms the project's technical feasibility; complete environment and
+timing details are reported in Section~3.5.
+
+\subsection{Planned Experiments}
+
+The project will proceed in four stages. First, a documented Python
+environment will be created and selected original experiments will be
+reproduced using verified dataset versions and preprocessing procedures.
+Second, OptIForest will be compared with standard Isolation Forest using
+15 repetitions where computationally practical. AUC-ROC, AUC-PR,
+training time and testing time will be recorded.
+
+Third, the effects of branching factor, cut threshold and sampling size
+will be investigated systematically. OptIForest will then be evaluated
+on selected existing datasets, prioritising Mammography, Thyroid and
+Musk, and on the controlled synthetic datasets described in
+Section~5.3. Performance on global and local synthetic anomalies will be
+examined separately.
+
+Finally, prediction errors and disagreements between OptIForest and the
+baseline will be analysed. A small selection may also be used in the
+exploratory LLM-as-judge evaluation. Dataset versions, preprocessing
+steps, random seeds, parameters and package versions will be recorded.
+Raw results will be saved in structured files, and the report's tables
+and figures will be generated using reproducible Python scripts.
+
+\subsection{Risks and Limitations}
+The main reproducibility risk is that the public repository includes only
+the processed AD dataset. Other datasets may be unavailable or may use
+versions, preprocessing procedures and anomaly-label definitions that
+differ from those used by the authors. Only datasets whose versions can
+be identified reliably will be presented as reproductions. Dataset
+exclusions and unavoidable preprocessing decisions will be documented.
+
+Additional risks include outdated dependencies, randomised results and
+limited computing time. Fixed package versions and recorded random seeds
+will be used, and the experimental scope may be reduced using documented
+selection criteria if necessary. AUC-PR and error analysis will accompany
+AUC-ROC because the latter can appear optimistic for rare anomalies.
+Synthetic data may not fully represent real applications, and
+LLM-as-judge results may be prompt- or model-dependent. These limitations
+will be reported explicitly rather than hidden when interpreting the
+results.
+
+\section{Conclusion}
+This proposal presents a feasible reproducibility and extension study of
+OptIForest for unsupervised anomaly detection. The project will reproduce
+selected experiments using the authors' public implementation and
+original benchmark data, investigate the effects of important parameters,
+and compare OptIForest with the standard Isolation Forest baseline.
+Performance will be evaluated using AUC-ROC, AUC-PR, execution time,
+repeated experiments and detailed error analysis.
+
+The successful preliminary execution on the supplied AD dataset
+demonstrates that the main implementation can be run and can produce
+results close to those reported in the paper. The extension will evaluate
+the method on additional existing datasets and newly generated synthetic
+data containing controlled global and local anomalies. All dependency
+versions, preprocessing decisions, parameters, scripts and results will
+be documented in the project repository. The study will therefore
+determine both whether selected published results are reproducible and
+whether the paper's claims continue to hold under new data conditions.
+
+% \bibliographystyle{acl_natbib}
+\bibliography{custom}
+
+
+\end{document}
